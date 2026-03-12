@@ -276,6 +276,12 @@
                     <input type="text" id="exclude-companies" placeholder="e.g. Acme Corp, Initech" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" oninput="state.excludeCompanies = this.value">
                 </div>
 
+                <!-- Sources info -->
+                <div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
+                    <p class="font-medium mb-1">We search ~80 companies across these platforms:</p>
+                    <p class="text-xs text-blue-600">Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, and Amazon Jobs. This covers most tech companies, startups, and research-focused orgs. LinkedIn, Indeed, and Glassdoor are not included as they don't offer public APIs.</p>
+                </div>
+
                 <div class="flex justify-between items-center pt-2">
                     <button onclick="goToStep(2)" class="inline-flex items-center px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">
                         <svg class="mr-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
