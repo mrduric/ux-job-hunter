@@ -62,7 +62,7 @@ _CACHE_TTL = 3600  # 1 hour
 class AnalyzeRequest(BaseModel):
     resume_text: str
     api_key: str
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-haiku-4-5-20251001"
 
 
 class SearchRequest(BaseModel):
@@ -73,7 +73,7 @@ class SearchRequest(BaseModel):
     experience_levels: list[str]
     posted_within_days: int = 7
     exclude_companies: list[str] = []
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-haiku-4-5-20251001"
 
 
 # ---------------------------------------------------------------------------
