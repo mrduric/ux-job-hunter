@@ -448,6 +448,7 @@ function renderResults(jobs) {
             <td class="px-3 py-3 font-medium text-gray-900">${esc(job.title || '')}</td>
             <td class="px-3 py-3 text-gray-700">${esc(job.company || '')}</td>
             <td class="px-3 py-3 text-gray-600">${esc(job.location || '')}</td>
+            <td class="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">${esc(job.date_posted || '—')}</td>
             <td class="px-3 py-3 text-gray-600 max-w-[200px] truncate" title="${esc(reasoning)}">${esc(reasoning)}</td>
             <td class="px-3 py-3 text-gray-600 max-w-[160px] truncate" title="${esc(hook)}">${esc(hook)}</td>
         `;
@@ -458,7 +459,7 @@ function renderResults(jobs) {
         detail.id = `detail-${idx}`;
         detail.className = 'hidden';
         detail.innerHTML = `
-            <td colspan="7" class="px-4 py-4 bg-gray-50">
+            <td colspan="8" class="px-4 py-4 bg-gray-50">
                 <div class="space-y-2 text-sm">
                     <div><span class="font-medium text-gray-700">Full Reasoning:</span> <span class="text-gray-600">${esc(reasoning || 'N/A')}</span></div>
                     <div><span class="font-medium text-gray-700">Cover Letter Hook:</span> <span class="text-gray-600">${esc(hook || 'N/A')}</span></div>

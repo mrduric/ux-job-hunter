@@ -126,6 +126,9 @@ class JobDiscoverer:
     - Greenhouse boards (many tech companies)
     - Lever boards
     - Ashby boards (newer ATS, used by OpenAI, Notion, etc.)
+    - SmartRecruiters (Visa, IKEA, Spotify, etc.)
+    - Workable (Hotjar, Mural, dscout, etc.)
+    - BambooHR (Qualtrics, FullStory, Pendo, etc.)
     - Amazon Jobs (public JSON API)
 
     To add a new source, just add a scrape_* method.
@@ -175,6 +178,42 @@ class JobDiscoverer:
                 time.sleep(1)
             except Exception as e:
                 self.logger.warning(f"Ashby error for {company_slug}: {e}")
+
+        # --- SmartRecruiters boards ---
+        smartrecruiters_companies = self._load_smartrecruiters_companies()
+        for company_id in smartrecruiters_companies:
+            try:
+                jobs = self.scrape_smartrecruiters(company_id)
+                all_jobs.extend(jobs)
+                if on_progress:
+                    on_progress({"phase": "discovery", "source": "smartrecruiters", "company": company_id, "found_so_far": len(all_jobs)})
+                time.sleep(1)
+            except Exception as e:
+                self.logger.warning(f"SmartRecruiters error for {company_id}: {e}")
+
+        # --- Workable boards ---
+        workable_companies = self._load_workable_companies()
+        for subdomain in workable_companies:
+            try:
+                jobs = self.scrape_workable(subdomain)
+                all_jobs.extend(jobs)
+                if on_progress:
+                    on_progress({"phase": "discovery", "source": "workable", "company": subdomain, "found_so_far": len(all_jobs)})
+                time.sleep(1)
+            except Exception as e:
+                self.logger.warning(f"Workable error for {subdomain}: {e}")
+
+        # --- BambooHR boards ---
+        bamboohr_companies = self._load_bamboohr_companies()
+        for subdomain in bamboohr_companies:
+            try:
+                jobs = self.scrape_bamboohr(subdomain)
+                all_jobs.extend(jobs)
+                if on_progress:
+                    on_progress({"phase": "discovery", "source": "bamboohr", "company": subdomain, "found_so_far": len(all_jobs)})
+                time.sleep(1)
+            except Exception as e:
+                self.logger.warning(f"BambooHR error for {subdomain}: {e}")
 
         # --- Amazon Jobs (public JSON API, no Playwright) ---
         try:
@@ -383,6 +422,158 @@ class JobDiscoverer:
                 self.logger.warning(f"Amazon search failed for term: {term}")
 
             time.sleep(1)
+
+        return jobs
+
+    # ---- SmartRecruiters (public JSON API) ----
+
+    def scrape_smartrecruiters(self, company_id: str) -> list[JobPosting]:
+        """
+        SmartRecruiters has a public API:
+        https://api.smartrecruiters.com/v1/companies/{id}/postings
+        """
+        import urllib.request
+
+        url = f"https://api.smartrecruiters.com/v1/companies/{company_id}/postings?limit=100"
+        self.logger.info(f"Scraping SmartRecruiters: {company_id}")
+
+        req = urllib.request.Request(url, headers={"User-Agent": "JobHunter/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+
+        jobs = []
+        for item in data.get("content", []):
+            title = item.get("name", "")
+            if not self._matches_title(title):
+                continue
+
+            location = item.get("location", {})
+            location_parts = [
+                location.get("city", ""),
+                location.get("region", ""),
+                location.get("country", ""),
+            ]
+            location_name = ", ".join(p for p in location_parts if p)
+            if location.get("remote"):
+                location_name = f"{location_name} (Remote)" if location_name else "Remote"
+
+            # Get posting date
+            released = item.get("releasedDate", "")[:10] if item.get("releasedDate") else ""
+
+            # SmartRecruiters listing endpoint doesn't include full description,
+            # so we use the company/job name context
+            department = item.get("department", {}).get("label", "")
+            description = f"{title} at {company_id.replace('-', ' ').title()}. Department: {department}."
+
+            job_id = item.get("id", "")
+            job_url = f"https://jobs.smartrecruiters.com/{company_id}/{job_id}"
+
+            jobs.append(JobPosting(
+                title=title,
+                company=item.get("company", {}).get("name", company_id.replace("-", " ").title()),
+                location=location_name,
+                url=job_url,
+                description=description[:3000],
+                date_posted=released,
+                source="smartrecruiters",
+            ))
+
+        return jobs
+
+    # ---- Workable (public JSON API) ----
+
+    def scrape_workable(self, subdomain: str) -> list[JobPosting]:
+        """
+        Workable has a public widget API:
+        https://apply.workable.com/api/v1/widget/accounts/{subdomain}
+        """
+        import urllib.request
+
+        url = f"https://apply.workable.com/api/v1/widget/accounts/{subdomain}"
+        self.logger.info(f"Scraping Workable: {subdomain}")
+
+        req = urllib.request.Request(url, headers={"User-Agent": "JobHunter/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+
+        jobs = []
+        for item in data.get("jobs", []):
+            title = item.get("title", "")
+            if not self._matches_title(title):
+                continue
+
+            location_name = item.get("location", "")
+            if item.get("telecommuting"):
+                location_name = f"{location_name} (Remote)" if location_name else "Remote"
+
+            posted = item.get("published", "")[:10] if item.get("published") else ""
+
+            shortcode = item.get("shortcode", "")
+            job_url = f"https://apply.workable.com/{subdomain}/j/{shortcode}/" if shortcode else ""
+
+            description = item.get("description", "")
+
+            jobs.append(JobPosting(
+                title=title,
+                company=subdomain.replace("-", " ").title(),
+                location=location_name,
+                url=job_url,
+                description=self._strip_html(description)[:3000],
+                date_posted=posted,
+                source="workable",
+            ))
+
+        return jobs
+
+    # ---- BambooHR (public job board API) ----
+
+    def scrape_bamboohr(self, subdomain: str) -> list[JobPosting]:
+        """
+        BambooHR has a public job board API:
+        https://{subdomain}.bamboohr.com/careers/list
+        """
+        import urllib.request
+
+        url = f"https://{subdomain}.bamboohr.com/careers/list"
+        self.logger.info(f"Scraping BambooHR: {subdomain}")
+
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "JobHunter/1.0",
+            "Accept": "application/json",
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+
+        jobs = []
+        for item in data.get("result", []):
+            title = item.get("jobOpeningName", "")
+            if not self._matches_title(title):
+                continue
+
+            location_parts = [
+                item.get("location", {}).get("city", ""),
+                item.get("location", {}).get("state", ""),
+                item.get("location", {}).get("country", ""),
+            ]
+            location_name = ", ".join(p for p in location_parts if p)
+
+            posted = item.get("datePosted", "")[:10] if item.get("datePosted") else ""
+
+            job_id = item.get("id", "")
+            job_url = f"https://{subdomain}.bamboohr.com/careers/{job_id}" if job_id else ""
+
+            department = item.get("departmentLabel", "")
+            description = f"{title}. Department: {department}." if department else title
+
+            jobs.append(JobPosting(
+                title=title,
+                company=subdomain.replace("-", " ").title(),
+                location=location_name,
+                url=job_url,
+                description=description[:3000],
+                date_posted=posted,
+                source="bamboohr",
+            ))
 
         return jobs
 
@@ -617,6 +808,95 @@ class JobDiscoverer:
             "doordash",       # DoorDash may have Ashby in addition to Greenhouse
             "monday",
             "rippling",
+
+            # Add more here!
+        ]
+
+    def _load_smartrecruiters_companies(self) -> list[str]:
+        """
+        Curated list of companies using SmartRecruiters.
+
+        HOW TO FIND MORE:
+        - Check a company's careers page — if it uses SmartRecruiters,
+          the API ID is usually the company name in lowercase.
+        - API: api.smartrecruiters.com/v1/companies/{id}/postings
+        """
+        return [
+            # ===== Large enterprises =====
+            "Visa",
+            "IKEA",
+            "Bosch",
+            "Samsungelectronics",
+            "Adidas",
+
+            # ===== Tech =====
+            "Spotify",
+            "Skyscanner",
+            "Booking",
+
+            # ===== Consulting / services =====
+            "Accenture",
+            "Deloitte",
+
+            # ===== Other =====
+            "PhilipMorrisInternational",
+            "Zalando",
+
+            # Add more here!
+        ]
+
+    def _load_workable_companies(self) -> list[str]:
+        """
+        Curated list of companies using Workable.
+
+        HOW TO FIND MORE:
+        - Check if a company's careers page URL contains "apply.workable.com/{subdomain}"
+        - API: apply.workable.com/api/v1/widget/accounts/{subdomain}
+        """
+        return [
+            # ===== Tech / SaaS =====
+            "mural",
+            "testio",
+            "maze-1",
+            "hotjar",
+            "typeform",
+            "dovetail",
+            "usertesting",
+            "userlytics",
+
+            # ===== Design / creative =====
+            "invisionapp",
+            "abstract",
+
+            # ===== Research platforms =====
+            "dscout",
+            "respondent",
+
+            # Add more here!
+        ]
+
+    def _load_bamboohr_companies(self) -> list[str]:
+        """
+        Curated list of companies using BambooHR.
+
+        HOW TO FIND MORE:
+        - Check if a company's careers page URL contains "{company}.bamboohr.com/careers"
+        - API: {subdomain}.bamboohr.com/careers/list
+        """
+        return [
+            # ===== Tech =====
+            "qualtrics",
+            "fullstory",
+            "pendo",
+            "mixpanel",
+            "heap",
+
+            # ===== Design / UX =====
+            "blink",
+            "fuzzymath",
+
+            # ===== Research =====
+            "userinterviews",
 
             # Add more here!
         ]
