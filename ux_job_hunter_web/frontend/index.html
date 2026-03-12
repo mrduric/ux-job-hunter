@@ -297,6 +297,15 @@
                         <div id="progress-bar" class="bg-indigo-600 h-3 rounded-full transition-all duration-300 progress-animated" style="width: 0%"></div>
                     </div>
                     <p id="search-status" class="text-sm text-gray-500">Initializing...</p>
+                    <!-- Discovery stats (shown during discovery phase) -->
+                    <div id="discovery-stats" class="mt-4 hidden">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-2xl font-bold text-indigo-600" id="discovery-count">0</span>
+                            <span class="text-sm text-gray-500">jobs found so far</span>
+                        </div>
+                        <div id="source-badges" class="flex flex-wrap gap-2 text-xs"></div>
+                        <p class="text-xs text-gray-400 mt-3">Scanning ~80 company career pages across 7 job platforms. This typically takes 1–2 minutes.</p>
+                    </div>
                 </div>
 
                 <!-- Results Table -->
@@ -314,7 +323,17 @@
                         </div>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left" id="results-table">
+                        <table class="w-full text-sm text-left table-fixed" id="results-table">
+                            <colgroup>
+                                <col style="width: 60px">  <!-- Score -->
+                                <col style="width: 65px">  <!-- Level -->
+                                <col style="width: 18%">   <!-- Title -->
+                                <col style="width: 10%">   <!-- Company -->
+                                <col style="width: 12%">   <!-- Location -->
+                                <col style="width: 80px">  <!-- Posted -->
+                                <col style="width: auto">  <!-- Reasoning -->
+                                <col style="width: 15%">   <!-- Hook -->
+                            </colgroup>
                             <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
                                 <tr>
                                     <th class="px-3 py-3 cursor-pointer hover:bg-gray-100 select-none" onclick="sortResults('fit_score')">Score <span class="sort-arrow" data-col="fit_score"></span></th>

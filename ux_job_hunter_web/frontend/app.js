@@ -309,6 +309,9 @@ async function startSearch() {
     document.getElementById('progress-bar').style.width = '0%';
     document.getElementById('search-phase').textContent = 'Discovering jobs...';
     document.getElementById('search-status').textContent = 'Initializing...';
+    document.getElementById('discovery-stats').classList.remove('hidden');
+    document.getElementById('discovery-count').textContent = '0';
+    document.getElementById('source-badges').innerHTML = '';
 
     try {
         const res = await fetch('/api/search', {
@@ -372,10 +375,21 @@ function handleSearchEvent(event) {
     const bar = document.getElementById('progress-bar');
     const status = document.getElementById('search-status');
 
+    const discoveryStats = document.getElementById('discovery-stats');
+    const discoveryCount = document.getElementById('discovery-count');
+    const sourceBadges = document.getElementById('source-badges');
+
     switch (event.type) {
         case 'status':
-            if (event.phase === 'discovery') phase.textContent = 'Discovering jobs...';
-            else if (event.phase === 'evaluation') phase.textContent = 'Evaluating fit with AI...';
+            if (event.phase === 'discovery') {
+                phase.textContent = 'Discovering jobs...';
+                discoveryStats.classList.remove('hidden');
+                bar.style.width = '0%';
+            }
+            else if (event.phase === 'evaluation') {
+                phase.textContent = 'Evaluating fit with AI...';
+                discoveryStats.classList.add('hidden');
+            }
             else if (event.phase === 'discovery_complete') phase.textContent = 'Discovery complete';
             if (event.message) status.textContent = event.message;
             break;
@@ -383,8 +397,14 @@ function handleSearchEvent(event) {
         case 'progress':
             if (event.phase === 'discovery') {
                 phase.textContent = 'Discovering jobs...';
-                status.textContent = `Scraping ${event.source || ''}: ${event.company || ''}... (${event.found_so_far || 0} found)`;
+                discoveryStats.classList.remove('hidden');
+                const found = event.found_so_far || 0;
+                discoveryCount.textContent = found;
+                status.textContent = `Scanning ${event.source || ''}: ${event.company || ''}...`;
+                // Update source badge
+                updateSourceBadge(sourceBadges, event.source, event.company);
             } else if (event.phase === 'evaluation') {
+                discoveryStats.classList.add('hidden');
                 phase.textContent = 'Evaluating fit with AI...';
                 const pct = event.total ? Math.round((event.current / event.total) * 100) : 0;
                 bar.style.width = `${pct}%`;
@@ -413,6 +433,43 @@ function handleSearchEvent(event) {
             if (event.message) status.textContent = event.message;
             break;
     }
+}
+
+// ── Discovery Source Badges ───────────────────────────────────────────────
+
+const sourceColors = {
+    greenhouse: 'bg-green-100 text-green-700',
+    lever: 'bg-blue-100 text-blue-700',
+    ashby: 'bg-purple-100 text-purple-700',
+    smartrecruiters: 'bg-orange-100 text-orange-700',
+    workable: 'bg-teal-100 text-teal-700',
+    bamboohr: 'bg-pink-100 text-pink-700',
+    amazon_jobs: 'bg-yellow-100 text-yellow-700',
+};
+
+const sourceLabels = {
+    greenhouse: 'Greenhouse',
+    lever: 'Lever',
+    ashby: 'Ashby',
+    smartrecruiters: 'SmartRecruiters',
+    workable: 'Workable',
+    bamboohr: 'BambooHR',
+    amazon_jobs: 'Amazon',
+};
+
+function updateSourceBadge(container, source, company) {
+    if (!source) return;
+    let badge = container.querySelector(`[data-source="${source}"]`);
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.setAttribute('data-source', source);
+        const color = sourceColors[source] || 'bg-gray-100 text-gray-700';
+        badge.className = `inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${color}`;
+        container.appendChild(badge);
+    }
+    const label = sourceLabels[source] || source;
+    // Show a spinner dot while actively scanning this source
+    badge.innerHTML = `<span class="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-60 animate-pulse"></span> ${esc(label)}`;
 }
 
 // ── Results Rendering ─────────────────────────────────────────────────────────
@@ -445,9 +502,9 @@ function renderResults(jobs) {
         row.innerHTML = `
             <td class="px-3 py-3"><span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${scoreBg}">${Number(score).toFixed(1)}</span></td>
             <td class="px-3 py-3 text-gray-600">${esc(level)}</td>
-            <td class="px-3 py-3 font-medium text-gray-900">${esc(job.title || '')}</td>
-            <td class="px-3 py-3 text-gray-700">${esc(job.company || '')}</td>
-            <td class="px-3 py-3 text-gray-600">${esc(job.location || '')}</td>
+            <td class="px-3 py-3 font-medium text-gray-900 truncate" title="${esc(job.title || '')}">${esc(job.title || '')}</td>
+            <td class="px-3 py-3 text-gray-700 truncate" title="${esc(job.company || '')}">${esc(job.company || '')}</td>
+            <td class="px-3 py-3 text-gray-600 truncate" title="${esc(job.location || '')}">${esc(job.location || '')}</td>
             <td class="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">${esc(job.date_posted || '—')}</td>
             <td class="px-3 py-3 text-gray-600 max-w-[200px] truncate" title="${esc(reasoning)}">${esc(reasoning)}</td>
             <td class="px-3 py-3 text-gray-600 max-w-[160px] truncate" title="${esc(hook)}">${esc(hook)}</td>
