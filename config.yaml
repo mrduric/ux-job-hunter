@@ -1,0 +1,48 @@
+# ============================================================
+# UX Job Hunter — Configuration
+# ============================================================
+# Edit this file to customize your job search.
+# The script will use these values instead of the defaults.
+# ============================================================
+
+# --- Target job titles (add/remove as needed) ---
+job_titles:
+  - "UX Researcher"
+  - "User Researcher"
+  - "Research Scientist UX"
+  - "Mixed Methods Researcher"
+  - "Qualitative Researcher"
+  - "Design Researcher"
+  - "UXR Intern"
+  - "UX Research Intern"
+  - "Research Scientist Intern"
+
+# --- Preferred locations ---
+locations:
+  - "Ann Arbor, MI"
+  - "Detroit, MI"
+  - "Chicago, IL"
+  - "Remote"
+  - "New York, NY"
+  - "San Francisco, CA"
+  - "Seattle, WA"
+
+# --- Experience levels: entry_level, mid_level, internship ---
+experience_levels:
+  - entry_level
+  - mid_level
+  - internship
+
+# --- Only show jobs posted within this many days ---
+posted_within_days: 7
+
+# --- Companies to skip (e.g. already applied, bad experience) ---
+exclude_companies: []
+
+# --- Claude model for evaluation ---
+# claude-sonnet-4-20250514 is cheaper and fast, good for daily runs
+# claude-opus-4-6 for deeper analysis if budget allows
+claude_model: "claude-sonnet-4-20250514"
+
+# --- API key (or set ANTHROPIC_API_KEY env variable instead) ---
+# anthropic_api_key: "sk-ant-..."

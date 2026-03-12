@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UX Job Hunter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            background-color: #e0e7ff;
+            color: #3730a3;
+            margin: 0.25rem;
+        }
+        .chip button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            line-height: 1;
+            color: #6366f1;
+            cursor: pointer;
+        }
+        .chip button:hover {
+            background-color: #c7d2fe;
+            color: #312e81;
+        }
+        .spinner {
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #6366f1;
+            border-radius: 50%;
+            width: 1.25rem;
+            height: 1.25rem;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes progress-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .progress-animated {
+            animation: progress-pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-6">
+            <h1 class="text-3xl font-bold text-gray-900">UX Job Hunter</h1>
+            <p class="mt-1 text-gray-500">AI-powered job matching for UX professionals</p>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+
+        <!-- Error Alert -->
+        <div id="error-alert" class="hidden mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+            <span id="error-message"></span>
+            <button onclick="hideError()" class="absolute top-3 right-3 text-red-400 hover:text-red-600">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+            </button>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center flex-1" id="step-indicator">
+                    <!-- Step 1 -->
+                    <div class="flex items-center" data-step-indicator="1">
+                        <div class="step-circle flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 text-white text-sm font-semibold">1</div>
+                        <span class="step-label ml-2 text-sm font-medium text-indigo-600 hidden sm:inline">Upload</span>
+                    </div>
+                    <div class="flex-1 h-0.5 mx-3 bg-gray-200" data-step-line="1"></div>
+                    <!-- Step 2 -->
+                    <div class="flex items-center" data-step-indicator="2">
+                        <div class="step-circle flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-500 text-sm font-semibold">2</div>
+                        <span class="step-label ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Analyze</span>
+                    </div>
+                    <div class="flex-1 h-0.5 mx-3 bg-gray-200" data-step-line="2"></div>
+                    <!-- Step 3 -->
+                    <div class="flex items-center" data-step-indicator="3">
+                        <div class="step-circle flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-500 text-sm font-semibold">3</div>
+                        <span class="step-label ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Settings</span>
+                    </div>
+                    <div class="flex-1 h-0.5 mx-3 bg-gray-200" data-step-line="3"></div>
+                    <!-- Step 4 -->
+                    <div class="flex items-center" data-step-indicator="4">
+                        <div class="step-circle flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-500 text-sm font-semibold">4</div>
+                        <span class="step-label ml-2 text-sm font-medium text-gray-500 hidden sm:inline">Results</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 1: Upload Resume -->
+        <div id="step-1" class="step-content">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">Upload Your Resume</h2>
+                <p class="text-gray-500 mb-6">Upload your resume to get started. We accept PDF, TXT, and Markdown files.</p>
+
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6" id="drop-zone">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p class="text-gray-600 mb-2">Choose a file or drag it here</p>
+                    <input type="file" id="resume-file" accept=".pdf,.txt,.md" class="hidden" onchange="onFileSelected()">
+                    <button onclick="document.getElementById('resume-file').click()" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
+                        Choose File
+                    </button>
+                    <p id="file-name" class="mt-2 text-sm text-gray-500 hidden"></p>
+                </div>
+
+                <button id="upload-btn" onclick="uploadResume()" disabled class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
+                    <span class="spinner mr-2 hidden" id="upload-spinner"></span>
+                    Upload Resume
+                </button>
+
+                <!-- Extracted text area (hidden until upload succeeds) -->
+                <div id="resume-text-section" class="hidden mt-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Extracted Resume Text</label>
+                    <textarea id="resume-text" rows="10" class="w-full border border-gray-300 rounded-lg p-3 text-sm font-mono text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="goToStep(2)" class="inline-flex items-center px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition">
+                            Next
+                            <svg class="ml-2 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Analyze & Customize -->
+        <div id="step-2" class="step-content hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">Analyze & Customize</h2>
+                <p class="text-gray-500 mb-6">Provide your API key to analyze your resume and extract job preferences.</p>
+
+                <!-- API Key -->
+                <div class="mb-6">
+                    <label for="api-key" class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                    <div class="relative">
+                        <input type="password" id="api-key" placeholder="Enter your API key" class="w-full border border-gray-300 rounded-lg p-2.5 pr-16 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <button onclick="toggleApiKeyVisibility()" id="api-key-toggle" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1 rounded">Show</button>
+                    </div>
+                </div>
+
+                <button id="analyze-btn" onclick="analyzeResume()" class="inline-flex items-center px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition">
+                    <span class="spinner mr-2 hidden" id="analyze-spinner"></span>
+                    Analyze Resume
+                </button>
+
+                <!-- Analysis Results -->
+                <div id="analysis-results" class="hidden mt-8 space-y-6">
+                    <!-- Job Titles -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Job Titles</label>
+                        <div id="job-titles-chips" class="flex flex-wrap items-center border border-gray-200 rounded-lg p-2 min-h-[2.5rem] bg-gray-50"></div>
+                        <div class="flex mt-2 gap-2">
+                            <input type="text" id="job-titles-input" placeholder="Add title..." class="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onkeydown="if(event.key==='Enter'){addChipFromInput('job-titles');event.preventDefault();}">
+                            <button onclick="addChipFromInput('job-titles')" class="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Skills -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Skills</label>
+                        <div id="skills-chips" class="flex flex-wrap items-center border border-gray-200 rounded-lg p-2 min-h-[2.5rem] bg-gray-50"></div>
+                        <div class="flex mt-2 gap-2">
+                            <input type="text" id="skills-input" placeholder="Add skill..." class="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onkeydown="if(event.key==='Enter'){addChipFromInput('skills');event.preventDefault();}">
+                            <button onclick="addChipFromInput('skills')" class="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Locations -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Locations</label>
+                        <div id="locations-chips" class="flex flex-wrap items-center border border-gray-200 rounded-lg p-2 min-h-[2.5rem] bg-gray-50"></div>
+                        <div class="flex mt-2 gap-2">
+                            <input type="text" id="locations-input" placeholder="Add location..." class="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onkeydown="if(event.key==='Enter'){addChipFromInput('locations');event.preventDefault();}">
+                            <button onclick="addChipFromInput('locations')" class="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Experience Level -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Experience Level</label>
+                        <div class="flex flex-wrap gap-3">
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" value="internship" class="exp-level-checkbox w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" onchange="updateExperienceLevels()">
+                                <span class="text-sm text-gray-700">Internship</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" value="entry_level" class="exp-level-checkbox w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" onchange="updateExperienceLevels()">
+                                <span class="text-sm text-gray-700">Entry Level</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" value="mid_level" class="exp-level-checkbox w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" onchange="updateExperienceLevels()">
+                                <span class="text-sm text-gray-700">Mid Level</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" value="senior" class="exp-level-checkbox w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" onchange="updateExperienceLevels()">
+                                <span class="text-sm text-gray-700">Senior</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between pt-4">
+                        <button onclick="goToStep(1)" class="inline-flex items-center px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">
+                            <svg class="mr-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            Back
+                        </button>
+                        <button onclick="goToStep(3)" class="inline-flex items-center px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition">
+                            Next
+                            <svg class="ml-2 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Search Settings -->
+        <div id="step-3" class="step-content hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">Search Settings</h2>
+                <p class="text-gray-500 mb-6">Review your preferences and configure search parameters.</p>
+
+                <!-- Summary -->
+                <div class="mb-6 space-y-3">
+                    <div>
+                        <span class="text-sm font-medium text-gray-500">Job Titles:</span>
+                        <p id="summary-titles" class="text-sm text-gray-800 mt-0.5"></p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-500">Locations:</span>
+                        <p id="summary-locations" class="text-sm text-gray-800 mt-0.5"></p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-500">Experience Levels:</span>
+                        <p id="summary-experience" class="text-sm text-gray-800 mt-0.5"></p>
+                    </div>
+                </div>
+
+                <hr class="my-6 border-gray-200">
+
+                <!-- Posted within -->
+                <div class="mb-4">
+                    <label for="posted-within" class="block text-sm font-medium text-gray-700 mb-1">Posted within</label>
+                    <select id="posted-within" class="border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="state.postedWithinDays = parseInt(this.value)">
+                        <option value="3">3 days</option>
+                        <option value="7" selected>7 days</option>
+                        <option value="14">14 days</option>
+                        <option value="30">30 days</option>
+                    </select>
+                </div>
+
+                <!-- Exclude companies -->
+                <div class="mb-6">
+                    <label for="exclude-companies" class="block text-sm font-medium text-gray-700 mb-1">Exclude companies</label>
+                    <input type="text" id="exclude-companies" placeholder="e.g. Acme Corp, Initech" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" oninput="state.excludeCompanies = this.value">
+                </div>
+
+                <div class="flex justify-between items-center pt-2">
+                    <button onclick="goToStep(2)" class="inline-flex items-center px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">
+                        <svg class="mr-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        Back
+                    </button>
+                    <button id="search-btn" onclick="startSearch()" class="inline-flex items-center px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 shadow-sm transition text-base">
+                        <span class="spinner mr-2 hidden" id="search-spinner"></span>
+                        Start Search
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Results -->
+        <div id="step-4" class="step-content hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">Results</h2>
+
+                <!-- Progress Section -->
+                <div id="search-progress" class="mb-6">
+                    <p id="search-phase" class="text-sm font-medium text-indigo-600 mb-2">Discovering jobs...</p>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                        <div id="progress-bar" class="bg-indigo-600 h-3 rounded-full transition-all duration-300 progress-animated" style="width: 0%"></div>
+                    </div>
+                    <p id="search-status" class="text-sm text-gray-500">Initializing...</p>
+                </div>
+
+                <!-- Results Table -->
+                <div id="results-container" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                        <p id="results-count" class="text-sm text-gray-500"></p>
+                        <div class="flex gap-2">
+                            <button onclick="downloadCSV()" class="inline-flex items-center px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                                <svg class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                Download CSV
+                            </button>
+                            <button onclick="newSearch()" class="inline-flex items-center px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                                New Search
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left" id="results-table">
+                            <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+                                <tr>
+                                    <th class="px-3 py-3 cursor-pointer hover:bg-gray-100 select-none" onclick="sortResults('fit_score')">Score <span class="sort-arrow" data-col="fit_score"></span></th>
+                                    <th class="px-3 py-3 cursor-pointer hover:bg-gray-100 select-none" onclick="sortResults('seniority_level')">Level <span class="sort-arrow" data-col="seniority_level"></span></th>
+                                    <th class="px-3 py-3 cursor-pointer hover:bg-gray-100 select-none" onclick="sortResults('title')">Title <span class="sort-arrow" data-col="title"></span></th>
+                                    <th class="px-3 py-3 cursor-pointer hover:bg-gray-100 select-none" onclick="sortResults('company')">Company <span class="sort-arrow" data-col="company"></span></th>
+                                    <th class="px-3 py-3 cursor-pointer hover:bg-gray-100 select-none" onclick="sortResults('location')">Location <span class="sort-arrow" data-col="location"></span></th>
+                                    <th class="px-3 py-3">Reasoning</th>
+                                    <th class="px-3 py-3">Hook</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
