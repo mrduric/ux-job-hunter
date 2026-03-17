@@ -479,10 +479,12 @@ function updateSourceBadge(container, source, company) {
 function renderResults(jobs) {
     const container = document.getElementById('results-container');
     const body = document.getElementById('results-body');
+    const cards = document.getElementById('results-cards');
     const countEl = document.getElementById('results-count');
 
     countEl.textContent = `${jobs.length} job${jobs.length !== 1 ? 's' : ''} found`;
     body.innerHTML = '';
+    cards.innerHTML = '';
 
     jobs.forEach((job, idx) => {
         // Normalize field names (backend sends fit_score/seniority_level/fit_reasoning/cover_letter_hook)
@@ -497,6 +499,36 @@ function renderResults(jobs) {
             : score >= 5 ? 'bg-yellow-100 text-yellow-800'
             : 'bg-red-100 text-red-800';
 
+        // ── Mobile card ──
+        const card = document.createElement('div');
+        card.className = 'border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition';
+        card.onclick = () => {
+            const detail = card.querySelector('.card-detail');
+            if (detail) detail.classList.toggle('hidden');
+        };
+        card.innerHTML = `
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-gray-900 text-sm">${esc(job.title || '')}</p>
+                    <p class="text-gray-600 text-xs mt-0.5">${esc(job.company || '')}${job.location ? ' · ' + esc(job.location) : ''}</p>
+                </div>
+                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${scoreBg} ml-2 shrink-0">${Number(score).toFixed(1)}</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                ${level ? `<span class="bg-gray-100 px-1.5 py-0.5 rounded">${esc(level)}</span>` : ''}
+                ${job.date_posted ? `<span>${esc(job.date_posted)}</span>` : ''}
+            </div>
+            <p class="text-xs text-gray-600 line-clamp-2">${esc(reasoning)}</p>
+            <div class="card-detail hidden mt-3 pt-3 border-t border-gray-100 space-y-2 text-xs">
+                <div><span class="font-medium text-gray-700">Cover Letter Hook:</span> <span class="text-gray-600">${esc(hook || 'N/A')}</span></div>
+                <div><span class="font-medium text-gray-700">Matching Skills:</span> <span class="text-gray-600">${esc(matchingSkills || 'N/A')}</span></div>
+                <div><span class="font-medium text-gray-700">Skill Gaps:</span> <span class="text-gray-600">${esc(gaps || 'None identified')}</span></div>
+                ${job.url ? `<div><a href="${esc(job.url)}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">View Job Posting &rarr;</a></div>` : ''}
+            </div>
+        `;
+        cards.appendChild(card);
+
+        // ── Desktop table row ──
         const row = document.createElement('tr');
         row.className = 'border-b border-gray-100 hover:bg-gray-50 cursor-pointer';
         row.setAttribute('data-idx', idx);
