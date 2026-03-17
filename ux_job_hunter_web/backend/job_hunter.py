@@ -215,6 +215,18 @@ class JobDiscoverer:
             except Exception as e:
                 self.logger.warning(f"BambooHR error for {subdomain}: {e}")
 
+        # --- Workday boards ---
+        workday_companies = self._load_workday_companies()
+        for wd in workday_companies:
+            try:
+                jobs = self.scrape_workday(wd["company"], wd["instance"], wd["site"], wd.get("name", ""))
+                all_jobs.extend(jobs)
+                if on_progress:
+                    on_progress({"phase": "discovery", "source": "workday", "company": wd.get("name", wd["company"]), "found_so_far": len(all_jobs)})
+                time.sleep(1)
+            except Exception as e:
+                self.logger.warning(f"Workday error for {wd.get('name', wd['company'])}: {e}")
+
         # --- Amazon Jobs (public JSON API, no Playwright) ---
         try:
             amazon_jobs = self._scrape_amazon_careers()
@@ -577,6 +589,85 @@ class JobDiscoverer:
 
         return jobs
 
+    # ---- Workday (undocumented public JSON API) ----
+
+    def scrape_workday(self, company: str, instance: str, site: str, display_name: str = "") -> list[JobPosting]:
+        """
+        Workday career sites expose an undocumented JSON API:
+        POST https://{company}.{instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/jobs
+
+        No auth needed. Returns paginated job listings.
+        """
+        import urllib.request
+
+        base_url = f"https://{company}.{instance}.myworkdayjobs.com"
+        api_url = f"{base_url}/wday/cxs/{company}/{site}/jobs"
+        self.logger.info(f"Scraping Workday: {display_name or company}")
+
+        payload = json.dumps({
+            "appliedFacets": {},
+            "limit": 20,
+            "offset": 0,
+            "searchText": "",
+        }).encode("utf-8")
+
+        req = urllib.request.Request(api_url, data=payload, headers={
+            "Content-Type": "application/json",
+            "User-Agent": "JobHunter/1.0",
+        })
+
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+        except Exception as e:
+            self.logger.warning(f"Workday API error for {company}: {e}")
+            return []
+
+        jobs = []
+        for item in data.get("jobPostings", []):
+            title = item.get("title", "")
+            if not self._matches_title(title):
+                continue
+
+            location_name = item.get("locationsText", "")
+            external_path = item.get("externalPath", "")
+            job_url = f"{base_url}/en-US/{site}{external_path}" if external_path else ""
+
+            # postedOn is relative text like "Posted 5 Days Ago" — parse to approximate date
+            posted_text = item.get("postedOn", "")
+            date_posted = self._parse_workday_date(posted_text)
+
+            company_name = display_name or company.replace("-", " ").title()
+
+            jobs.append(JobPosting(
+                title=title,
+                company=company_name,
+                location=location_name,
+                url=job_url,
+                description="",  # Would need a second API call for full description
+                date_posted=date_posted,
+                source="workday",
+            ))
+
+        return jobs
+
+    def _parse_workday_date(self, text: str) -> str:
+        """Convert Workday relative date strings to ISO dates."""
+        if not text:
+            return ""
+        text_lower = text.lower()
+        today = datetime.now()
+        if "today" in text_lower:
+            return today.strftime("%Y-%m-%d")
+        if "yesterday" in text_lower:
+            return (today - timedelta(days=1)).strftime("%Y-%m-%d")
+        # Match "Posted X Days Ago", "Posted 30+ Days Ago"
+        match = re.search(r"(\d+)\+?\s*days?\s*ago", text_lower)
+        if match:
+            days = int(match.group(1))
+            return (today - timedelta(days=days)).strftime("%Y-%m-%d")
+        return ""
+
     # ---- Helpers ----
 
     def _matches_title(self, title: str) -> bool:
@@ -897,6 +988,50 @@ class JobDiscoverer:
 
             # ===== Research =====
             "userinterviews",
+
+            # Add more here!
+        ]
+
+    def _load_workday_companies(self) -> list[dict]:
+        """
+        Curated list of companies using Workday career sites.
+
+        HOW TO FIND MORE:
+        - Check if a company's careers page URL contains "myworkdayjobs.com"
+        - The URL pattern is: {company}.{instance}.myworkdayjobs.com/{site}
+        - Example: netflix.wd5.myworkdayjobs.com/Netflix_Careers
+
+        Each entry needs: company slug, Workday instance (wd1-wd12), site name,
+        and a display name.
+        """
+        return [
+            # ===== Big tech / entertainment =====
+            {"company": "netflix", "instance": "wd5", "site": "Netflix_Careers", "name": "Netflix"},
+            {"company": "disney", "instance": "wd5", "site": "disneycareer", "name": "Disney"},
+            {"company": "ea", "instance": "wd1", "site": "ea_careers", "name": "EA (Electronic Arts)"},
+            {"company": "uber", "instance": "wd5", "site": "Uber", "name": "Uber"},
+
+            # ===== Enterprise / SaaS =====
+            {"company": "salesforce", "instance": "wd12", "site": "External_Career_Site", "name": "Salesforce"},
+            {"company": "adobe", "instance": "wd5", "site": "external_experienced", "name": "Adobe"},
+            {"company": "servicenow", "instance": "wd1", "site": "Careers", "name": "ServiceNow"},
+            {"company": "atlassian", "instance": "wd1", "site": "External_Careers", "name": "Atlassian"},
+            {"company": "vmware", "instance": "wd1", "site": "VMware_Careers", "name": "VMware"},
+
+            # ===== Consumer / retail =====
+            {"company": "nike", "instance": "wd1", "site": "Nike_Careers", "name": "Nike"},
+            {"company": "target", "instance": "wd5", "site": "targetcareers", "name": "Target"},
+
+            # ===== Finance =====
+            {"company": "capitalone", "instance": "wd1", "site": "Capital_One", "name": "Capital One"},
+            {"company": "paypal", "instance": "wd1", "site": "jobs", "name": "PayPal"},
+            {"company": "intuit", "instance": "wd1", "site": "Intuit_Careers", "name": "Intuit"},
+
+            # ===== Health / pharma =====
+            {"company": "humana", "instance": "wd5", "site": "Humana_Careers", "name": "Humana"},
+
+            # ===== Consulting / professional services =====
+            {"company": "mckinsey", "instance": "wd3", "site": "careers", "name": "McKinsey"},
 
             # Add more here!
         ]

@@ -445,6 +445,7 @@ const sourceColors = {
     workable: 'bg-teal-100 text-teal-700',
     bamboohr: 'bg-pink-100 text-pink-700',
     amazon_jobs: 'bg-yellow-100 text-yellow-700',
+    workday: 'bg-cyan-100 text-cyan-700',
 };
 
 const sourceLabels = {
@@ -455,6 +456,7 @@ const sourceLabels = {
     workable: 'Workable',
     bamboohr: 'BambooHR',
     amazon_jobs: 'Amazon',
+    workday: 'Workday',
 };
 
 function updateSourceBadge(container, source, company) {
